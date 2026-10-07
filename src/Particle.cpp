@@ -5,12 +5,23 @@ Particle::Particle(Room &_room){
     particlePosition = (*room).emiterPosition; 
 }
 
-float Particle::calculateRayPaths(int maxCollisions, float angle){
+float Particle::calculateRayPaths(int maxCollisions, float angle, bool _returnTime){
+    // overwrite particle's parameters with function inputs
     exitAngle = angle; 
+    returnTime = _returnTime; 
+
+    // recalculate the particle velocity with new exit angle
     particleVelocity = {stepOffset * std::cos(exitAngle), -stepOffset * std::sin(exitAngle)}; 
-    bool runLoop = true; // final check for when loop should stop
-    bool collisionDetected = false; // turns on briefly every time there is a collision, a flag to trigger collision code
-    int collisions = 0; // keeps track of number of collisions to trigger end code
+
+    // final check for when loop should stop
+    bool runLoop = true; 
+    
+    // turns on briefly every time there is a collision, a flag to trigger collision code
+    bool collisionDetected = false; 
+    
+    // keeps track of number of collisions to trigger end code when number exeeds maxCollisions
+    int collisions = 0; 
+
     /*
     keeps track of distances between collisions, this is needed because the distance calculated won't take into account 
     more than the distance between start and end points, without calculating the distance after collisions. 
@@ -83,10 +94,37 @@ float Particle::calculateRayPaths(int maxCollisions, float angle){
                 // reset particle position for reuse 
                 particlePosition = (*room).emiterPosition;
 
-                // return the magnitude of the final distance 
-                return Vector2Length(distanceTally);
+                // check if we must return total time or distance, depends on boolean on Particle's private member
+                if (returnTime){
+                    return Vector2Length(distanceTally) / particleSpeed; // return time
+                } else {
+                    return Vector2Length(distanceTally); // return distance
+                }
+                
             }
         }
     }
     return 0; 
+}
+
+std::vector<float> Particle::calculateRadialRayPaths(int numberOfRays, int maxCollisions)
+{
+    // all the delay times will be stored here, the size of this vector depends on numberOfRays
+    std::vector<float> delayTimes; 
+    
+    // angle difference between rays in radians 
+    float deltaAngle = (2*PI) / numberOfRays; 
+
+    // angle of emission in radians, start at zero
+    float angle = 0; 
+
+    for (int i = 0; i < numberOfRays; i++){
+        // calculate ray times for given emission angle
+        delayTimes.push_back(calculateRayPaths(maxCollisions, angle, true)); 
+
+        // step angle up by angle offset
+        angle += (deltaAngle); 
+    }
+
+    return delayTimes;
 }
