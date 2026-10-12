@@ -47,7 +47,9 @@ class Particle{
     float calculateRayPaths(int maxCollisions = 1, Vector2 angle = {0, 0}, bool _returnTime = true); 
 
     /*
-    calculate ray paths for numberOfRays rays equidistantly spread out from the source
+    calculate ray paths for numberOfRays rays equidistantly spread out from the source. The x value gives the number
+    of azimuth samples per z-plane; the y value gives the number of interior z-planes, in addition to one ray each
+    straight up and straight down from the source.
     parameters: number of rays extending out from the source in the x-y plane and in z (default: 4 in xy and 4 in z), 
     number of max collisions per ray
     return: [float vector] array of all collision times

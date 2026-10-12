@@ -133,27 +133,25 @@ std::vector<float> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int m
     
     // angle difference between rays in radians 
     float deltaAngle_xy = (2*PI) / numberOfRays.x; 
-    float deltaAngle_z = PI / numberOfRays.y;
+    float deltaAngle_z = PI / (numberOfRays.y + 1);
 
     // angle of emission in radians, start at zero
-    float angle_xy = 0; 
-    float angle_z = deltaAngle_z; 
+    float angle_xy = 0;
 
     // calculate delay fully pointing up from emitter
     delayTimes.push_back(calculateRayPaths(maxCollisions, {0, 0}, true)); 
 
-    // sweep through z
-    for (int q = 1; q < numberOfRays.y; q++){
+    // Add the requested number of azimuth samples at each interior z-plane.
+    for (int q = 1; q <= numberOfRays.y; q++){
+        float angle_z = q * deltaAngle_z;
+
         // sweep through xy plane for each angle in z 
         for (int i = 0; i < numberOfRays.x; i++){
+            angle_xy = i * deltaAngle_xy;
+
             // calculate ray times for given emission angle
             delayTimes.push_back(calculateRayPaths(maxCollisions, {angle_xy, angle_z}, true)); 
-    
-            // step angle up by angle offset in xy plane
-            angle_xy += (deltaAngle_xy); 
         }
-        // step angle up by angle offset in z 
-        angle_z += deltaAngle_z; 
     }
     // calculate delay fully pointing down from emitter
     delayTimes.push_back(calculateRayPaths(maxCollisions, {0, PI}, true)); 
