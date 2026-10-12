@@ -10,7 +10,7 @@ class Particle{
     // copy of the room for values needed in internal calculations (room dimensions, microphone and emitter positions, etc.)
     Room *room; 
     // flag to turn on and off the debugging messages of where each collision happened
-    bool collisionMessages = true; 
+    bool collisionMessages = false; 
     // flag to toggle wether the calculateRayPaths function returns length or time
     bool returnTime = true; 
     public: 
@@ -48,8 +48,9 @@ class Particle{
 
     /*
     calculate ray paths for numberOfRays rays equidistantly spread out from the source
-    parameters: number of rays extending out from the source (default: 4), number of max collisions per ray
+    parameters: number of rays extending out from the source in the x-y plane and in z (default: 4 in xy and 4 in z), 
+    number of max collisions per ray
     return: [float vector] array of all collision times
     */
-    std::vector<float> calculateRadialRayPaths(const int numberOfRays = 4, int maxCollisions = 1); 
+    std::vector<float> calculateRadialRayPaths(const Vector2 numberOfRays = {4, 4}, int maxCollisions = 1); 
 }; 

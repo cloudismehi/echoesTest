@@ -10,8 +10,13 @@ float Particle::calculateRayPaths(int maxCollisions, Vector2 angle, bool _return
     exitAngle = angle; 
     returnTime = _returnTime; 
 
-    // recalculate the particle velocity with new exit angle
-    particleVelocity = {stepOffset * std::cos(exitAngle.x), -stepOffset * std::sin(exitAngle.x), stepOffset * std::sin(exitAngle.y)}; 
+    /*
+    recalculate the particle velocity with new exit angle by converting spherical coordinates {stepOffset, angle.x, angle.y}
+    into rectangular coordinates
+    */ 
+    particleVelocity.x = stepOffset * std::sin(angle.y) * std::cos(angle.x); 
+    particleVelocity.y = stepOffset * std::sin(angle.y) * std::sin(angle.x); 
+    particleVelocity.z = stepOffset * std::cos(angle.y); 
 
     // final check for when loop should stop
     bool runLoop = true; 
@@ -40,8 +45,9 @@ float Particle::calculateRayPaths(int maxCollisions, Vector2 angle, bool _return
     collisionHistory.push_back(particlePosition); 
 
     if (collisionMessages){
+        std::cout << "---------------------\n"; 
         std::cout << "initial position: (" << particlePosition.x << ", " << particlePosition.y << ", " << particlePosition.z << ")\n"; 
-        std::cout << "initial velocity: (" << particleVelocity.x << ", " << particleVelocity.y << ", " << particleVelocity.z << ")\n\n"; 
+        std::cout << "initial velocity: (" << particleVelocity.x << ", " << particleVelocity.y << ", " << particleVelocity.z << ")\n"; 
     }
 
     while (runLoop){
@@ -116,27 +122,41 @@ float Particle::calculateRayPaths(int maxCollisions, Vector2 angle, bool _return
             }
         }
     }
+    if (collisionMessages) std::cout << "---------------------\n"; 
     return 0; 
 }
 
-std::vector<float> Particle::calculateRadialRayPaths(int numberOfRays, int maxCollisions)
+std::vector<float> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int maxCollisions)
 {
     // all the delay times will be stored here, the size of this vector depends on numberOfRays
     std::vector<float> delayTimes; 
     
     // angle difference between rays in radians 
-    float deltaAngle = (2*PI) / numberOfRays; 
+    float deltaAngle_xy = (2*PI) / numberOfRays.x; 
+    float deltaAngle_z = PI / numberOfRays.y;
 
     // angle of emission in radians, start at zero
-    float angle = 0; 
+    float angle_xy = 0; 
+    float angle_z = deltaAngle_z; 
 
-    for (int i = 0; i < numberOfRays; i++){
-        // calculate ray times for given emission angle
-        delayTimes.push_back(calculateRayPaths(maxCollisions, {angle, 0}, true)); 
+    // calculate delay fully pointing up from emitter
+    delayTimes.push_back(calculateRayPaths(maxCollisions, {0, 0}, true)); 
 
-        // step angle up by angle offset
-        angle += (deltaAngle); 
+    // sweep through z
+    for (int q = 1; q < numberOfRays.y; q++){
+        // sweep through xy plane for each angle in z 
+        for (int i = 0; i < numberOfRays.x; i++){
+            // calculate ray times for given emission angle
+            delayTimes.push_back(calculateRayPaths(maxCollisions, {angle_xy, angle_z}, true)); 
+    
+            // step angle up by angle offset in xy plane
+            angle_xy += (deltaAngle_xy); 
+        }
+        // step angle up by angle offset in z 
+        angle_z += deltaAngle_z; 
     }
+    // calculate delay fully pointing down from emitter
+    delayTimes.push_back(calculateRayPaths(maxCollisions, {0, PI}, true)); 
 
     return delayTimes;
 }

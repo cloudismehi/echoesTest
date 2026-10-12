@@ -12,9 +12,10 @@ int main(){
     Room room; 
     Particle particle(room); 
 
-    std::cout << "distance: " << particle.calculateRayPaths(2, {0, 0}, false) << std::endl; 
-
-    //TODO: i am not handling the three dimensional angle properly, fix the math 
+    auto delayTimes = particle.calculateRadialRayPaths({4, 4}, 2); 
+    for (auto time : delayTimes){
+        std::cout << time << '\n'; 
+    }
 
     return 0; 
 }
