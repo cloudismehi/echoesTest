@@ -12,18 +12,10 @@ int main(){
     Room room; 
     Particle particle(room); 
 
-    std::cout << "manual calculation results: \n"; 
-    std::cout << "time: " << particle.calculateRayPaths(2) << '\n'; 
-    std::cout << "time: " << particle.calculateRayPaths(2, PI/2) << '\n'; 
-    std::cout << "time: " << particle.calculateRayPaths(2, PI) << '\n'; 
-    std::cout << "time: " << particle.calculateRayPaths(2, 3 * PI/2) << '\n'; 
-    
-    auto delayTimes = particle.calculateRadialRayPaths(4, 2); 
-    std::cout << "\nautomatic calculation results:\n"; 
-    for (auto delay : delayTimes){
-        std::cout << delay << '\n'; 
+    auto delayTimes = particle.calculateRadialRayPaths({4, 4}, 2); 
+    for (auto time : delayTimes){
+        std::cout << time << '\n'; 
     }
-
 
     return 0; 
 }
