@@ -52,7 +52,10 @@ class Particle{
     straight up and straight down from the source.
     parameters: number of rays extending out from the source in the x-y plane and in z (default: 4 in xy and 4 in z), 
     number of max collisions per ray
-    return: [float vector] array of all collision times
+    return: [Vector2 vector] cpp vector containing a duple with the delay time and the total travel distance - in that order
     */
-    std::vector<float> calculateRadialRayPaths(const Vector2 numberOfRays = {4, 4}, int maxCollisions = 1); 
+    std::vector<Vector2> calculateRadialRayPaths(const Vector2 numberOfRays = {4, 4}, int maxCollisions = 1); 
+
+    // little helper function that just returns the time of travel for a given distance
+    float calculateTravelTime(float distance); 
 }; 

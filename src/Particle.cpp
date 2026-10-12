@@ -126,10 +126,12 @@ float Particle::calculateRayPaths(int maxCollisions, Vector2 angle, bool _return
     return 0; 
 }
 
-std::vector<float> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int maxCollisions)
+std::vector<Vector2> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int maxCollisions)
 {
-    // all the delay times will be stored here, the size of this vector depends on numberOfRays
-    std::vector<float> delayTimes; 
+    // all the delay times and distances will be stored here, the size of this vector depends on numberOfRays
+    std::vector<Vector2> delayParams; 
+    float delayTime = 0; 
+    float delayDistance = 0; 
     
     // angle difference between rays in radians 
     float deltaAngle_xy = (2*PI) / numberOfRays.x; 
@@ -139,7 +141,9 @@ std::vector<float> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int m
     float angle_xy = 0;
 
     // calculate delay fully pointing up from emitter
-    delayTimes.push_back(calculateRayPaths(maxCollisions, {0, 0}, true)); 
+    delayDistance = calculateRayPaths(maxCollisions, {0, 0}, false); 
+    delayTime = calculateTravelTime(delayDistance); 
+    delayParams.push_back({delayTime, delayDistance}); 
 
     // Add the requested number of azimuth samples at each interior z-plane.
     for (int q = 1; q <= numberOfRays.y; q++){
@@ -150,11 +154,19 @@ std::vector<float> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int m
             angle_xy = i * deltaAngle_xy;
 
             // calculate ray times for given emission angle
-            delayTimes.push_back(calculateRayPaths(maxCollisions, {angle_xy, angle_z}, true)); 
+            delayDistance = calculateRayPaths(maxCollisions, {angle_xy, angle_z}, false); 
+            delayTime = calculateTravelTime(delayDistance); 
+            delayParams.push_back({delayTime, delayDistance}); 
         }
     }
     // calculate delay fully pointing down from emitter
-    delayTimes.push_back(calculateRayPaths(maxCollisions, {0, PI}, true)); 
+    delayDistance = calculateRayPaths(maxCollisions, {0, PI}, false); 
+    delayTime = calculateTravelTime(delayDistance); 
+    delayParams.push_back({delayTime, delayDistance}); 
 
-    return delayTimes;
+    return delayParams;
+}
+
+float Particle::calculateTravelTime(float distance){
+    return distance / particleSpeed; 
 }

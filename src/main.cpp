@@ -15,7 +15,7 @@ int main(){
     auto delayTimes = particle.calculateRadialRayPaths({4, 4}, 2); 
     int i = 0; 
     for (auto time : delayTimes){
-        std::cout << "(" << i + 1 << ") " << time << '\n'; 
+        std::cout << "(" << i + 1 << ") " << time.x << ", " << time.y << '\n'; 
         i++; 
     }
 
