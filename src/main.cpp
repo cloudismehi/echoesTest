@@ -2,33 +2,41 @@
 #include <vector>
 #include <raylib.h>
 #include <raymath.h>
+#include <fstream> 
 
 #include "include/Room.hpp"
 #include "include/Particle.hpp"
 #include "include/DelayLine.hpp"
+#include "include/SineWave.hpp"
+#include "include/ProjectInfo.hpp"
 
+
+ProjectInfo projectInfo; 
 std::vector<Vector2> reverberationParams; 
+
 
 int main(){
     Room room; 
     Particle particle(room); 
-    std::vector<Vector2> testDelaySettings; 
-    
-    testDelaySettings.push_back({1.f/44100, 1}); 
-    testDelaySettings.push_back({5.f/44100, 1});
+    SineWave sineWave; 
 
-    DelayLine delayLine(2, testDelaySettings);
+    short out[44100]; 
+    sineWave.generateRawFile = true; 
+    sineWave.generateSineChirp(200, 0.2, 1, 0.5, out); 
     
-    delayLine.delayLine[0].printDelayLegnth(); 
-    delayLine.delayLine[1].printDelayLegnth(); 
-    
-    for (int i = 0; i < 10; i++){
-        int feed = (i == 0) ? 1 : 0; 
-        auto output = delayLine.feed(feed); 
-        std::cout << "fed: " << feed << ". output: " <<  output + feed << '\n'; 
+    float min = 9999; 
+    float max = -9999; 
+    for (int i = 0; i < 44100; i++){
+        if (out[i] > max) max = out[i]; 
+        if (out[i] < min) min = out[i]; 
     }
-
+    printf("max: %0.2f, min %0.2f\n", max, min);
+    
     reverberationParams = particle.calculateRadialRayPaths({4, 4}, 2); 
     
+    DelayLine delayLine(projectInfo.totalNumberOfDelays, reverberationParams); 
+
+    
+
     return 0; 
 }

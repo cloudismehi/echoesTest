@@ -50,8 +50,8 @@ class Particle{
     calculate ray paths for numberOfRays rays equidistantly spread out from the source. The x value gives the number
     of azimuth samples per z-plane; the y value gives the number of interior z-planes, in addition to one ray each
     straight up and straight down from the source.
-    parameters: number of rays extending out from the source in the x-y plane and in z (default: 4 in xy and 4 in z), 
-    number of max collisions per ray
+    parameters: [Vector2] {number of azimuth samples per z-plane, number of interior z-planes} (default: 4 in xy and 4 in z), 
+        [int] number of max collisions per ray
     return: [Vector2 vector] cpp vector containing a duple with the delay time and the total travel distance - in that order
     */
     std::vector<Vector2> calculateRadialRayPaths(const Vector2 numberOfRays = {4, 4}, int maxCollisions = 1); 

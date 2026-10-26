@@ -44,11 +44,10 @@ DelayLine::DelayLine(int _numberOfDelayUnits, std::vector<Vector2> _delaySetting
 
 void DelayLine::printDelayTimes(){
     std::cout << "printing delay line status: " << numberOfDelayUnits << " units found\n"; 
-    std::cout << "("; 
+    int index = 0; 
     for (auto setting : delaySettings){
-        std::cout << setting.x << " "; 
+        printf("(%d) -> %0.2fms\n", ++index, setting.x*1000); 
     }
-    std::cout << ")\n"; 
 }
 
 float DelayLine::secondsToSamples(float seconds){
