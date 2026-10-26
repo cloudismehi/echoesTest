@@ -6,15 +6,15 @@
 #include "include/Room.hpp"
 #include "include/Particle.hpp"
 
-std::vector<float[2]> reverberationParams; 
+std::vector<Vector2> reverberationParams; 
 
 int main(){
     Room room; 
     Particle particle(room); 
 
-    auto delayTimes = particle.calculateRadialRayPaths({4, 4}, 2); 
+    reverberationParams = particle.calculateRadialRayPaths({4, 4}, 2); 
     int i = 0; 
-    for (auto time : delayTimes){
+    for (auto time : reverberationParams){
         std::cout << "(" << i + 1 << ") " << time.x << ", " << time.y << '\n'; 
         i++; 
     }
