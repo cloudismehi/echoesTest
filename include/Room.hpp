@@ -14,7 +14,7 @@ class Room{
     // scale of the room in pixels
     Vector3 roomScale_px = {300, 300, 300}; 
     // scale of the room in meters
-    Vector3 roomScale_m = {1, 1, 1};
+    Vector3 roomScale_m = {10, 10, 10};
     //scale between pixels and meters [px/m], used for conversion later
     Vector3 scale = {(roomScale_px.x / roomScale_m.x), (roomScale_px.y / roomScale_m.y), (roomScale_px.z / roomScale_m.z)}; 
     

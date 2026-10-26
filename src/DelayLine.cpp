@@ -58,7 +58,7 @@ double DelayLine::feed(double input){
     double output = 0; 
 
     for (int i = 0; i < numberOfDelayUnits; i++){
-        output += delayLine[i].feed(input);
+        output += (delayLine[i].feed(input) * 1);
     }
     return output;
 }

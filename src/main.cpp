@@ -30,13 +30,22 @@ int main(){
         if (out[i] > max) max = out[i]; 
         if (out[i] < min) min = out[i]; 
     }
-    printf("max: %0.2f, min %0.2f\n", max, min);
     
-    reverberationParams = particle.calculateRadialRayPaths({4, 4}, 2); 
+    reverberationParams = particle.calculateRadialRayPaths(projectInfo.numberOfRays, 2); 
     
     DelayLine delayLine(projectInfo.totalNumberOfDelays, reverberationParams); 
 
-    
+    std::fstream outfile("assets/reverbRawSine.raw", std::ios::out | std::ios::binary); 
+    short reverbOut[44100]; 
+    for (int i = 0; i < 44100; i++){
+        reverbOut[i] = (short) delayLine.feed((double) out[i]); 
+    }
+
+    outfile.write(reinterpret_cast<const char*> (reverbOut), 44100 * sizeof(short)); 
+    outfile.close();
+
+    delayLine.printDelayTimes(); 
+
 
     return 0; 
 }
