@@ -12,7 +12,7 @@
 
 
 ProjectInfo projectInfo; 
-std::vector<Vector2> reverberationParams; 
+std::vector<Vector3> reverberationParams; 
 
 
 int main(){
@@ -31,21 +31,24 @@ int main(){
         if (out[i] < min) min = out[i]; 
     }
     
-    reverberationParams = particle.calculateRadialRayPaths(projectInfo.numberOfRays, 2); 
+    reverberationParams = particle.calculateRadialRayPaths(projectInfo.numberOfRays, 5); 
     
     DelayLine delayLine(projectInfo.totalNumberOfDelays, reverberationParams); 
 
     std::fstream outfile("assets/reverbRawSine.raw", std::ios::out | std::ios::binary); 
     short reverbOut[44100]; 
     for (int i = 0; i < 44100; i++){
-        reverbOut[i] = (short) delayLine.feed((double) out[i]); 
+        reverbOut[i] = (short) (delayLine.feed((double) out[i]) * projectInfo.wetRev) + out[i]; 
     }
 
     outfile.write(reinterpret_cast<const char*> (reverbOut), 44100 * sizeof(short)); 
     outfile.close();
 
-    delayLine.printDelayTimes(); 
+    delayLine.printDelayInfo(); 
 
+    //! ONLY FOR DEBUGGING: turn raw file into wav file using ffmpeg, only works on my machine with my current 
+    //! project architecture
+    system("ffmpeg -f s16le -ar 44100 -ac 1 -i assets/reverbRawSine.raw assets/reverbSine.wav"); 
 
     return 0; 
 }

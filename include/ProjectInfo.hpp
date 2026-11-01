@@ -10,4 +10,6 @@ class ProjectInfo{
     Vector2 numberOfRays = {4, 4};
     // (+ 2) to account for the rays going straight up and straight down
     int totalNumberOfDelays = (numberOfRays.x * numberOfRays.y) + 2; 
+    // how much reverb signal is present on output
+    float wetRev = 1;
 }; 

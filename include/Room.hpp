@@ -24,4 +24,22 @@ class Room{
     */
     Vector3 emiterPosition = {5, roomScale_px.y/2, 150}; 
     Vector3 microphonePosition = {roomScale_px.x - 5, roomScale_px.y/2, 150}; 
+
+    /*
+    reflectivity factors for collisions with walls and ceiling/floor, there are only four walls and one ceiling and one floor
+    so there will be six reflectivity factors here, as the project scales the hope is to add a way to add/remove these 
+    factors during runtime
+    */
+   float refCeiling = 0.93; // wood
+   float refFloor = 0.63; // carpet 
+   float refWallLeft = 0.9; // plywood paneling
+   float refWallRight = 0.9; // plywood paneling
+   float refWallFront = 0.9; // plywood paneling
+   float refWallBack = 0.9; // plywood paneling
+//    float refCeiling = 1; // wood
+//    float refFloor = 1; // carpet 
+//    float refWallLeft = 1; // plywood paneling
+//    float refWallRight = 1; // plywood paneling
+//    float refWallFront = 1; // plywood paneling
+//    float refWallBack = 1; // plywood paneling
 }; 
