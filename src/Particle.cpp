@@ -5,10 +5,9 @@ Particle::Particle(Room &_room){
     particlePosition = (*room).emiterPosition; 
 }
 
-float Particle::calculateRayPaths(int maxCollisions, Vector2 angle, bool _returnTime){
+Vector2 Particle::calculateRayPaths(int maxCollisions, Vector2 angle){
     // overwrite particle's parameters with function inputs
     exitAngle = angle; 
-    returnTime = _returnTime; 
 
     /*
     recalculate the particle velocity with new exit angle by converting spherical coordinates {stepOffset, angle.x, angle.y}
@@ -40,6 +39,9 @@ float Particle::calculateRayPaths(int maxCollisions, Vector2 angle, bool _return
     int iterations = 0; 
     int maxIterations = 1000000; 
 
+    // keeps track of reflectivity per collision 
+    float reflectivity = 1.f; 
+
     //resets the collision history and adds the original position for each new particle run
     collisionHistory.clear(); 
     collisionHistory.push_back(particlePosition); 
@@ -59,15 +61,32 @@ float Particle::calculateRayPaths(int maxCollisions, Vector2 angle, bool _return
         /*
         check boundaries, reverse velocity and stop loop if boundaries are exeeded
         */
-        if ((particlePosition.x >= (*room).roomScale_px.x) || (particlePosition.x <= 0)){
+        if (particlePosition.x >= (*room).roomScale_px.x){ // right wall 
+            particleVelocity.x *= -1; 
+            collisionDetected = true;  
+            reflectivity *= (*room).refWallRight; 
+        } else if (particlePosition.x <= 0){ // left wall
             particleVelocity.x *= -1; 
             collisionDetected = true;        
-        } else if ((particlePosition.y >= (*room).roomScale_px.y) || (particlePosition.y <= 0)){
+            reflectivity *= (*room).refWallLeft; 
+        }
+        else if (particlePosition.y >= (*room).roomScale_px.y){ // wall front
             particleVelocity.y *= -1; 
             collisionDetected = true; 
-        } else if ((particlePosition.z >= (*room).roomScale_px.z) || (particlePosition.z <= 0)){
+            reflectivity *= (*room).refWallFront; 
+        } else if (particlePosition.y <= 0){ // wall back
+            particleVelocity.y *= -1; 
+            collisionDetected = true;        
+            reflectivity *= (*room).refWallBack; 
+        }
+        else if (particlePosition.z >= (*room).roomScale_px.z){ // ceiling
             particleVelocity.z *= -1; 
             collisionDetected = true; 
+            reflectivity *= (*room).refCeiling; 
+        } else if (particlePosition.z <= 0){ // floor
+            particleVelocity.z *= -1; 
+            collisionDetected = true;        
+            reflectivity *= (*room).refFloor;
         }
         // if collision has been found, then calculate the distance traveled and return a report 
         if (collisionDetected){
@@ -112,26 +131,22 @@ float Particle::calculateRayPaths(int maxCollisions, Vector2 angle, bool _return
                 // reset particle position for reuse 
                 particlePosition = (*room).emiterPosition;
 
-                // check if we must return total time or distance, depends on boolean on Particle's private member
-                if (returnTime){
-                    return Vector3Length(distanceTally) / particleSpeed; // return time
-                } else {
-                    return Vector3Length(distanceTally); // return distance
-                }
-                
+                return {Vector3Length(distanceTally), reflectivity}; // return distance
             }
         }
     }
     if (collisionMessages) std::cout << "---------------------\n"; 
-    return 0; 
+    return {0, 0}; 
 }
 
-std::vector<Vector2> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int maxCollisions)
+std::vector<Vector3> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int maxCollisions)
 {
     // all the delay times and distances will be stored here, the size of this vector depends on numberOfRays
-    std::vector<Vector2> delayParams; 
+    std::vector<Vector3> delayParams; 
     float delayTime = 0; 
     float delayDistance = 0; 
+    // a holder for the output of the calculateRayPaths function which returns {distance, reflectivity}
+    Vector2 distanceAndAttenuation = {0, 0}; 
     
     // angle difference between rays in radians 
     float deltaAngle_xy = (2*PI) / numberOfRays.x; 
@@ -140,10 +155,16 @@ std::vector<Vector2> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int
     // angle of emission in radians, start at zero
     float angle_xy = 0;
 
+    //total reflectivity from collisions as the boundary's reflectivity factor to the power of the number of collisions
+    float att = 1.f; 
+
     // calculate delay fully pointing up from emitter
-    delayDistance = calculateRayPaths(maxCollisions, {0, 0}, false); 
+    distanceAndAttenuation = calculateRayPaths(maxCollisions, {0, 0}); 
+    delayDistance = distanceAndAttenuation.x; 
     delayTime = calculateTravelTime(delayDistance); 
-    delayParams.push_back({delayTime, delayDistance}); 
+    att = distanceAndAttenuation.y; 
+    // push initial parameter into vector
+    delayParams.push_back({delayTime, delayDistance, att}); 
 
     // Add the requested number of azimuth samples at each interior z-plane.
     for (int q = 1; q <= numberOfRays.y; q++){
@@ -154,15 +175,21 @@ std::vector<Vector2> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int
             angle_xy = i * deltaAngle_xy;
 
             // calculate ray times for given emission angle
-            delayDistance = calculateRayPaths(maxCollisions, {angle_xy, angle_z}, false); 
+            distanceAndAttenuation = calculateRayPaths(maxCollisions, {angle_xy, angle_z}); 
+            delayDistance = distanceAndAttenuation.x; 
             delayTime = calculateTravelTime(delayDistance); 
-            delayParams.push_back({delayTime, delayDistance}); 
+            att = distanceAndAttenuation.y; 
+            // push azimuthal parameters into vector
+            delayParams.push_back({delayTime, delayDistance, att}); 
         }
     }
     // calculate delay fully pointing down from emitter
-    delayDistance = calculateRayPaths(maxCollisions, {0, PI}, false); 
+    distanceAndAttenuation = calculateRayPaths(maxCollisions, {0, PI}); 
+    delayDistance = distanceAndAttenuation.x; 
     delayTime = calculateTravelTime(delayDistance); 
-    delayParams.push_back({delayTime, delayDistance}); 
+    att = distanceAndAttenuation.y; 
+    // push final down parameter into vector 
+    delayParams.push_back({delayTime, delayDistance, att}); 
 
     return delayParams;
 }

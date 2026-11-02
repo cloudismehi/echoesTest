@@ -11,8 +11,6 @@ class Particle{
     Room *room; 
     // flag to turn on and off the debugging messages of where each collision happened
     bool collisionMessages = false; 
-    // flag to toggle wether the calculateRayPaths function returns length or time
-    bool returnTime = true; 
     public: 
 
     // overall velocity magnitude, used when calculating delay time [in meters per second] 
@@ -42,19 +40,19 @@ class Particle{
     run the loop that steps the ray around the world searching for collisions
     save collision position on vector, and print distance if option is turned on in particle private member. 
     parameters: max number of collisions (default: 1), this does not count the "collision" with the microphone
-    output: [float]length or time of total raypaths, depending on setting on particle's private member
+    output: [Vector2]{length of total raypaths, attenuation}
     */
-    float calculateRayPaths(int maxCollisions = 1, Vector2 angle = {0, 0}, bool _returnTime = true); 
+    Vector2 calculateRayPaths(int maxCollisions = 1, Vector2 angle = {0, 0}); 
 
     /*
     calculate ray paths for numberOfRays rays equidistantly spread out from the source. The x value gives the number
     of azimuth samples per z-plane; the y value gives the number of interior z-planes, in addition to one ray each
     straight up and straight down from the source.
-    parameters: number of rays extending out from the source in the x-y plane and in z (default: 4 in xy and 4 in z), 
-    number of max collisions per ray
-    return: [Vector2 vector] cpp vector containing a duple with the delay time and the total travel distance - in that order
+    parameters: [Vector2] {number of azimuth samples per z-plane, number of interior z-planes} (default: 4 in xy and 4 in z), 
+        [int] number of max collisions per ray
+    return: [Vector3 vector] {delay time [ms], delay distance [m], attenuation}
     */
-    std::vector<Vector2> calculateRadialRayPaths(const Vector2 numberOfRays = {4, 4}, int maxCollisions = 1); 
+    std::vector<Vector3> calculateRadialRayPaths(const Vector2 numberOfRays = {4, 4}, int maxCollisions = 1); 
 
     // little helper function that just returns the time of travel for a given distance
     float calculateTravelTime(float distance); 
