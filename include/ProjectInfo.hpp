@@ -13,3 +13,17 @@ class ProjectInfo{
     // how much reverb signal is present on output
     float wetRev = 1;
 }; 
+
+struct ParticleInfo{ 
+    float time; 
+    float distance; 
+    float attenuation[6]; 
+
+    void fill(float _time, float _delayDistance, float* _attenuation){
+        time = _time; 
+        distance = _delayDistance; 
+        for (int i = 0; i < 6; i++){
+        attenuation[i] = _attenuation[i]; 
+    }
+    }
+}; 
