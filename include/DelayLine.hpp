@@ -4,8 +4,35 @@
 #include <raylib.h>
 #include <raymath.h> 
 #include <new>
+#include <fftw3.h>
+#include <memory> 
+#include <type_traits> 
+#include <stdexcept>
 
 #include "include/ProjectInfo.hpp"
+
+/* 
+handle the deleters for the FFTW buffers in such a way that it happens automatically 
+by the unique pointer, and only happens once
+*/
+struct FftwFree{
+    void operator()(fftw_complex* ptr) const noexcept{
+        fftw_free(ptr); 
+    }
+}; 
+
+/*
+handle the plan's destruction before the buffers automatically by the unique pointer 
+and only happens once
+*/ 
+struct FftwPlanDestroy{
+    void operator()(std::remove_pointer_t<fftw_plan>* plan) const noexcept{
+        if (plan) fftw_destroy_plan(plan); 
+    }
+}; 
+// attatches the destructor structs to the buffer and plans 
+using FftwBuffer = std::unique_ptr<fftw_complex[], FftwFree>; 
+using FftwPlan = std::unique_ptr<std::remove_pointer_t<fftw_plan>, FftwPlanDestroy>; 
 
 // single delay instance, with a set time of delay time in samples
 class DelayUnit{
@@ -13,17 +40,37 @@ class DelayUnit{
     // length of delay in samples
     long delayLength; 
     // storage bucket for delay memory
-    double *cache; 
-    // pointer for reading/writing values in cache
-    long ptr = 0; 
+    std::vector<double> delayCache; 
+    // pointer for reading/writing values in delayCache
+    int delayIndex = 0; 
+    
+    // size of fft caches
+    int fftSize = 256; 
+    // storage bucket of ffts, this is the bucket that will dump its outputs after its filled and analyzed
+    std::vector<float> fftCache; 
+    // pointer for reading/writing values in fftCache
+    int fftIndex = 0;
+    // empty vector for returning when fft size is empty
+    const std::vector<float> emptyVec; 
+    // fftw buffers
+    FftwBuffer fftInput{nullptr}; 
+    FftwBuffer fftOutput{nullptr}; 
+    //fftw plans
+    FftwPlan fftPlanForward{nullptr}; 
+    FftwPlan fftPlanBackward{nullptr}; 
+    
     // attenuation factor for this delay unit
     float attenuation[6]; 
+    
 
     public: 
     /*
-    DelayUnit(delayTime): sets the delay time n (default 10 samples) and creates the cache 
+    DelayUnit(delayTime, attenuation): sets the delay time n (default 10 samples) and creates the delayCache 
     array of size n which is the maximum size we need for the delay, it also stores the attenuation factor 
-    for this unit
+    for this unit. 
+    ? note, for whatever reason, the delay length is 0-indexed, so a length of 1 gives a two sample delay. i'll 
+    ? fix that later ¯\_(ツ)_/¯
+    usage: DelayUnit(int delayTime{samples}, float[6] attenuations)
     */
     DelayUnit(int length = 10, float* att = nullptr); 
 
@@ -31,13 +78,21 @@ class DelayUnit{
     void changeDelayTime(double newLength); 
 
     /*
-    feed(newInput): main class function. stores new value in the cache at the current read index plus one 
-    and returns the current index value from the cache, which is the value stored n samples ago. If nothing had been stored yet, it returns 
+    feed(newInput): main class function. stores new value in the delayCache at the current read index plus one 
+    and returns the current index value from the delayCache, which is the value stored n samples ago. If nothing had been stored yet, it returns 
     zero
     parameters: new value [double]
     return: old cached value or zero
     */
    double feed(double input); 
+
+   /*
+   this feed function takes in one input at a time in the same way the other does. this one however stores the delayed data in a cache 
+   of the same size as the fft. after this cache is full, it'll be ready for the FFT, so it is analyzed and filtered depending 
+   on the attenuation factors passed in at class construction. it outputs either a nullptr, when the bucket hasn't been filled yet, or 
+   a float array with all the filtered data. 
+   */
+   std::vector<float> feedArr(float input); 
 
    // helper function that prints delay length in samples for the unit 
    void printDelayLegnth(); 

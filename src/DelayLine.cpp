@@ -2,31 +2,76 @@
 
 DelayUnit::DelayUnit(int length, float* att){
     delayLength = length; 
-    cache = new (std::nothrow) double[delayLength]; 
+    delayCache.resize(length);
+    fftCache.resize(fftSize); 
     for (int i = 0; i < 6; i++){
         attenuation[i] = att[i]; 
     }
 
-    if (cache == nullptr){
-        printf("error allocating memory for delay unit at length %d\n", length); 
+    // create fftw buffers
+    fftInput.reset(static_cast<fftw_complex*>(fftw_malloc(sizeof(fftw_complex) * fftSize))); 
+    fftOutput.reset(static_cast<fftw_complex*>(fftw_malloc(sizeof(fftw_complex) * fftSize))); 
+    if (!fftInput || !fftOutput){
+        throw std::bad_alloc{}; 
+    }
+
+    // create fftw plans
+    fftPlanForward.reset(fftw_plan_dft_1d(fftSize, fftInput.get(), fftOutput.get(), FFTW_FORWARD, FFTW_ESTIMATE)); 
+    fftPlanBackward.reset(fftw_plan_dft_1d(fftSize, fftOutput.get(), fftInput.get(), FFTW_BACKWARD, FFTW_ESTIMATE)); 
+    if (!fftPlanBackward || !fftPlanForward){
+        throw std::runtime_error("failed to create FFTW plan"); 
     }
 }
 
 void DelayUnit::changeDelayTime(double newLength){ 
-    delete[] cache; 
     delayLength = newLength; 
-    cache = new double[delayLength]; 
+    delayCache.resize(newLength); 
 }
 
 double DelayUnit::feed(double input){
     // read cached value from n samples ago, cached value is. zero if it hasn't been written over before
-    double output = cache[ptr]; 
+    double output = delayCache[delayIndex]; 
     // store current value at the pointer, then advance the pointer by one
     // TODO: handle filtering here on the input
-    cache[ptr++] = (input); 
-    // wrap pointer around when it exceeds the cache length
-    if (ptr >= delayLength) { ptr = 0; }
+    delayCache[delayIndex++] = (input) * 0.2; 
+    // wrap index around when it exceeds the delayCache length
+    if (delayIndex >= delayLength) { delayIndex = 0; }
     return output; 
+}
+
+std::vector<float> DelayUnit::feedArr(float input){
+    // save delayed signal in fft cache
+    fftCache[fftIndex++] = delayCache[delayIndex];  
+    // save new input in the delay cache
+    delayCache[delayIndex++] = input; 
+    // wrap index when it exceeds the delayCache length
+    if (delayIndex > delayLength) { delayIndex = 0; } 
+
+    // check if cache is full, if it is then it's ready to be filtered
+    if (fftIndex == fftSize){
+        // filtering
+        fftIndex = 0; 
+        // copy all the data into the fftw cache 
+        for (int i = 0; i < fftSize; i++){
+            fftInput[i][0] = fftCache[i]; 
+            fftInput[i][1] = 0.0; 
+        }
+        // execute fft -> fftOutput
+        fftw_execute(fftPlanForward.get()); 
+        //? filtering on fftOutput
+        // execute ifft -> fftInput
+        fftw_execute(fftPlanBackward.get()); 
+        // copy output into fftCache to return
+        for (int i = 0; i < fftSize; i++){
+            fftCache[i] = static_cast<float>(fftInput[i][0] / fftSize); 
+        }
+        
+        return fftCache; 
+    } else {
+        return emptyVec; 
+    }
+
+    return emptyVec;
 }
 
 void DelayUnit::printDelayLegnth(){
@@ -40,8 +85,7 @@ DelayLine::DelayLine(int _numberOfDelayUnits, std::vector<ParticleInfo> _delaySe
 
     // initiate all the delay units with the input info and append to delay line vector
     for (auto setting : delaySettings){
-        DelayUnit unit(setting.time, setting.attenuation); 
-        delayLine.push_back(unit); 
+        delayLine.emplace_back((int)(setting.time * projectInfo.sampleRate), setting.attenuation);
     }
 }
 
