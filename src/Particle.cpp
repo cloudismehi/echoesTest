@@ -5,7 +5,7 @@ Particle::Particle(Room &_room){
     particlePosition = (*room).emiterPosition; 
 }
 
-Vector2 Particle::calculateRayPaths(int maxCollisions, Vector2 angle){
+float Particle::calculateRayPaths(int maxCollisions, Vector2 angle){
     // overwrite particle's parameters with function inputs
     exitAngle = angle; 
 
@@ -39,8 +39,12 @@ Vector2 Particle::calculateRayPaths(int maxCollisions, Vector2 angle){
     int iterations = 0; 
     int maxIterations = 1000000; 
 
-    // keeps track of reflectivity per collision 
-    float reflectivity = 1.f; 
+
+    /*
+    keeps track of collision per boundary, defined in enum in header file: 
+    {RIGHT_WALL, LEFT_WALL, FRONT_WALL, BACK_WALL, CEILING, FLOOR}
+    */ 
+    int collisionsPerBoundary[6] = {0, 0, 0, 0, 0, 0}; 
 
     //resets the collision history and adds the original position for each new particle run
     collisionHistory.clear(); 
@@ -64,36 +68,34 @@ Vector2 Particle::calculateRayPaths(int maxCollisions, Vector2 angle){
         if (particlePosition.x >= (*room).roomScale_px.x){ // right wall 
             particleVelocity.x *= -1; 
             collisionDetected = true;  
-            reflectivity *= (*room).refWallRight; 
+            collisionsPerBoundary[RIGHT_WALL]++; // right wall flag
         } else if (particlePosition.x <= 0){ // left wall
             particleVelocity.x *= -1; 
             collisionDetected = true;        
-            reflectivity *= (*room).refWallLeft; 
+            collisionsPerBoundary[LEFT_WALL]++; // left wall flag
         }
         else if (particlePosition.y >= (*room).roomScale_px.y){ // wall front
             particleVelocity.y *= -1; 
             collisionDetected = true; 
-            reflectivity *= (*room).refWallFront; 
+            collisionsPerBoundary[FRONT_WALL]++; 
         } else if (particlePosition.y <= 0){ // wall back
             particleVelocity.y *= -1; 
             collisionDetected = true;        
-            reflectivity *= (*room).refWallBack; 
-        }
-        else if (particlePosition.z >= (*room).roomScale_px.z){ // ceiling
+            collisionsPerBoundary[BACK_WALL]++; 
+        } else if (particlePosition.z >= (*room).roomScale_px.z){ // ceiling
             particleVelocity.z *= -1; 
             collisionDetected = true; 
-            reflectivity *= (*room).refCeiling; 
+            collisionsPerBoundary[CEILING]++; 
         } else if (particlePosition.z <= 0){ // floor
             particleVelocity.z *= -1; 
             collisionDetected = true;        
-            reflectivity *= (*room).refFloor;
+            collisionsPerBoundary[FLOOR]++; 
         }
         // if collision has been found, then calculate the distance traveled and return a report 
         if (collisionDetected){
             collisions++; 
             collisionDetected = false; // reset collision flag
 
-            
             /*
             calculate distance traveled on this last frame in meters
             note: we have to calculate against the last entry in the collision history [collisionHistory.back()] to keep track 
@@ -130,23 +132,33 @@ Vector2 Particle::calculateRayPaths(int maxCollisions, Vector2 angle){
                 
                 // reset particle position for reuse 
                 particlePosition = (*room).emiterPosition;
+                
+                std::vector<float> attPerFreq;
+                for (int i = 0; i < 6; i++){
+                    att[i] = 1.f; 
+                    att[i] *= std::pow((1 - (*room).absWallRight[i]), (float) collisionsPerBoundary[RIGHT_WALL] / 2); 
+                    att[i] *= std::pow((1 - (*room).absWallLeft[i]), (float)collisionsPerBoundary[LEFT_WALL] / 2); 
+                    att[i] *= std::pow((1 - (*room).absWallFront[i]), (float)collisionsPerBoundary[FRONT_WALL] / 2); 
+                    att[i] *= std::pow((1 - (*room).absWallBack[i]), (float)collisionsPerBoundary[BACK_WALL] / 2); 
+                    att[i] *= std::pow((1 - (*room).absCeiling[i]), (float)collisionsPerBoundary[CEILING] / 2); 
+                    att[i] *= std::pow((1 - (*room).absFloor[i]), (float)collisionsPerBoundary[FLOOR] / 2); 
+                }
 
-                return {Vector3Length(distanceTally), reflectivity}; // return distance
+                return Vector3Length(distanceTally); // return distance
             }
         }
     }
     if (collisionMessages) std::cout << "---------------------\n"; 
-    return {0, 0}; 
+    return 0; 
 }
 
-std::vector<Vector3> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int maxCollisions)
+std::vector<ParticleInfo> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int maxCollisions)
 {
     // all the delay times and distances will be stored here, the size of this vector depends on numberOfRays
-    std::vector<Vector3> delayParams; 
+    std::vector<ParticleInfo> delayParams; 
+    ParticleInfo particleInfoTempHolder; 
     float delayTime = 0; 
     float delayDistance = 0; 
-    // a holder for the output of the calculateRayPaths function which returns {distance, reflectivity}
-    Vector2 distanceAndAttenuation = {0, 0}; 
     
     // angle difference between rays in radians 
     float deltaAngle_xy = (2*PI) / numberOfRays.x; 
@@ -155,16 +167,17 @@ std::vector<Vector3> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int
     // angle of emission in radians, start at zero
     float angle_xy = 0;
 
-    //total reflectivity from collisions as the boundary's reflectivity factor to the power of the number of collisions
-    float att = 1.f; 
-
-    // calculate delay fully pointing up from emitter
-    distanceAndAttenuation = calculateRayPaths(maxCollisions, {0, 0}); 
-    delayDistance = distanceAndAttenuation.x; 
+    
+    //? calculate delay fully pointing up from emitter
+    delayDistance = calculateRayPaths(maxCollisions, {0, 0}); 
     delayTime = calculateTravelTime(delayDistance); 
-    att = distanceAndAttenuation.y; 
+    for (int i = 0; i < 6; i++){
+        // calculate the attenuation from inverse square law and air absorption
+        att[i] *= calculateGeometricSpreading(delayDistance, i); 
+    }
+    particleInfoTempHolder.fill(delayTime, delayDistance, att); 
     // push initial parameter into vector
-    delayParams.push_back({delayTime, delayDistance, att}); 
+    delayParams.push_back(particleInfoTempHolder); 
 
     // Add the requested number of azimuth samples at each interior z-plane.
     for (int q = 1; q <= numberOfRays.y; q++){
@@ -174,26 +187,39 @@ std::vector<Vector3> Particle::calculateRadialRayPaths(Vector2 numberOfRays, int
         for (int i = 0; i < numberOfRays.x; i++){
             angle_xy = i * deltaAngle_xy;
 
-            // calculate ray times for given emission angle
-            distanceAndAttenuation = calculateRayPaths(maxCollisions, {angle_xy, angle_z}); 
-            delayDistance = distanceAndAttenuation.x; 
+            //? calculate ray times for given emission angle
+            delayDistance = calculateRayPaths(maxCollisions, {angle_xy, angle_z}); 
             delayTime = calculateTravelTime(delayDistance); 
-            att = distanceAndAttenuation.y; 
+            for (int f = 0; f < 6; f++){
+                // calculate the attenuation from inverse square law and air absorption
+                att[f] *= calculateGeometricSpreading(delayDistance, f); 
+            }
+            particleInfoTempHolder.fill(delayTime, delayDistance, att); 
             // push azimuthal parameters into vector
-            delayParams.push_back({delayTime, delayDistance, att}); 
+            delayParams.push_back(particleInfoTempHolder); 
         }
     }
-    // calculate delay fully pointing down from emitter
-    distanceAndAttenuation = calculateRayPaths(maxCollisions, {0, PI}); 
-    delayDistance = distanceAndAttenuation.x; 
+    //? calculate delay fully pointing down from emitter
+    delayDistance = calculateRayPaths(maxCollisions, {0, PI}); 
     delayTime = calculateTravelTime(delayDistance); 
-    att = distanceAndAttenuation.y; 
+    for (int i = 0; i < 6; i++){
+        // calculate the attenuation from inverse square law and air absorption
+        att[i] *= calculateGeometricSpreading(delayDistance, i); 
+    }
+    particleInfoTempHolder.fill(delayTime, delayDistance, att); 
     // push final down parameter into vector 
-    delayParams.push_back({delayTime, delayDistance, att}); 
+    delayParams.push_back(particleInfoTempHolder); 
 
     return delayParams;
 }
 
 float Particle::calculateTravelTime(float distance){
     return distance / particleSpeed; 
+}
+
+float Particle::calculateGeometricSpreading(float distance, int freqRangeIndex){
+    float result; 
+    float conversionFactor = -1.1513E-4; 
+    result = (0.2821 * std::exp(conversionFactor * (*room).airPropagation[freqRangeIndex] * distance)) / distance; 
+    return result; 
 }
