@@ -45,7 +45,7 @@ std::vector<float> DelayUnit::feedArr(float input){
     // save new input in the delay cache
     delayCache[delayIndex++] = input; 
     // wrap index when it exceeds the delayCache length
-    if (delayIndex > delayLength) { delayIndex = 0; } 
+    if (delayIndex >= delayLength) { delayIndex = 0; } 
 
     // check if cache is full, if it is then it's ready to be filtered
     if (fftIndex == fftSize){
@@ -59,6 +59,35 @@ std::vector<float> DelayUnit::feedArr(float input){
         // execute fft -> fftOutput
         fftw_execute(fftPlanForward.get()); 
         //? filtering on fftOutput
+        for (int i = 0; i < fftSize; i++){
+            float freq = (i * projectInfo.sampleRate) / fftSize; 
+
+            if (freq < 125){
+                // first band
+                fftOutput[i][0] *= attenuation[0]; 
+                fftOutput[i][1] *= attenuation[0]; 
+            } else if (freq < 250){
+                // second band
+                fftOutput[i][0] *= attenuation[1]; 
+                fftOutput[i][1] *= attenuation[1]; 
+            } else if (freq < 500){
+                // third band
+                fftOutput[i][0] *= attenuation[2]; 
+                fftOutput[i][1] *= attenuation[2]; 
+            } else if (freq < 1000){
+                // fourth band
+                fftOutput[i][0] *= attenuation[3]; 
+                fftOutput[i][1] *= attenuation[3]; 
+            } else if (freq < 2000){
+                // fifth band
+                fftOutput[i][0] *= attenuation[4]; 
+                fftOutput[i][1] *= attenuation[4]; 
+            } else {
+                // sixth band
+                fftOutput[i][0] *= attenuation[5]; 
+                fftOutput[i][1] *= attenuation[5]; 
+            }
+        }
         // execute ifft -> fftInput
         fftw_execute(fftPlanBackward.get()); 
         // copy output into fftCache to return
@@ -121,4 +150,31 @@ double DelayLine::feed(double input){
         output += (delayLine[i].feed(input) * 1);
     }
     return output;
+}
+
+std::vector<float> DelayLine::feedArr(float input){
+    // holder for the functions output, when the output is not an empty vector
+    std::vector<float> output(fftSize); 
+    // keeps track of whether any delay unit actually returned something, if they did we need to output it
+    bool flag_somethingWritten = false; 
+
+    // iterate through all delay units
+    for (int i = 0; i < numberOfDelayUnits; i++){
+        // temporary holder of feed output, this is needed so that i can add the values of the delays to one single vector 
+        std::vector<float> intermediateOut = delayLine[i].feedArr(input); 
+        // only write to output if the intermediate out has content 
+        if (intermediateOut.size() != 0){
+            // iterate through entries of intermediate output and add to output
+            for (int q = 0; q < fftSize; q++){
+                output[q] += intermediateOut[q]; 
+                flag_somethingWritten = true; // says we need to output the vector
+            }
+        }
+    } 
+    if (flag_somethingWritten){
+        return output; 
+    } else {
+        return std::vector<float>(); 
+    }
+    return std::vector<float>(); 
 }

@@ -37,6 +37,8 @@ using FftwPlan = std::unique_ptr<std::remove_pointer_t<fftw_plan>, FftwPlanDestr
 // single delay instance, with a set time of delay time in samples
 class DelayUnit{
     private: 
+    // project information 
+    ProjectInfo projectInfo; 
     // length of delay in samples
     long delayLength; 
     // storage bucket for delay memory
@@ -105,6 +107,8 @@ class DelayLine{
     in the delaySettings Vector2
     */ 
     std::vector<DelayUnit> delayLine; 
+    // fft size
+    int fftSize = 256; 
     // the number of needed delays, set by the project settings and utilized first by the raytracing algorithm
     int numberOfDelayUnits = 1; 
     /*
@@ -136,5 +140,7 @@ class DelayLine{
 
     // feed all delay units and get back sum of all delayed values 
     double feed(double input); 
+
+    std::vector<float> feedArr(float input); 
 }; 
 

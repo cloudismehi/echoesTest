@@ -15,23 +15,41 @@ int main(){
     ProjectInfo projectInfo; 
     Room room; 
     Particle particle(room); 
-    SineWave sineWave; 
+    WhiteNoise whiteNoise; 
     short out[44100]; 
     
-    sineWave.generateSineChirp(200, 0.2, 1, 0.5, out); 
+    whiteNoise.generateNoiseBurst(0.2, 1, 0.5, out); 
 
-    auto reverberationParams = particle.calculateRadialRayPaths(projectInfo.numberOfRays, 5); 
+    float arr[] = {0, 0, 0, 0, 0, 1}; 
+    DelayUnit unit(1, arr); 
+
+    // auto reverberationParams = particle.calculateRadialRayPaths(projectInfo.numberOfRays, 5); 
     
-    DelayLine delayLine(projectInfo.totalNumberOfDelays, reverberationParams); 
-    delayLine.printDelayInfo(); 
+    // DelayLine delayLine(projectInfo.totalNumberOfDelays, reverberationParams); 
+    // delayLine.printDelayInfo(); 
 
     std::fstream outfile("assets/reverbRawSine.raw", std::ios::out | std::ios::binary); 
-    short reverbOut[44100]; 
+    
     for (int i = 0; i < 44100; i++){
-        reverbOut[i] = (short) (delayLine.feed((double) out[i]) * projectInfo.wetRev) + out[i]; 
+        auto output = unit.feedArr(out[i]); 
+        if (output.size() != 0){
+            for (auto val : output){
+                short foo = (short) val; 
+                outfile.write(reinterpret_cast<const char*> (&foo), sizeof(foo)); 
+            }
+        }
     }
 
-    outfile.write(reinterpret_cast<const char*> (reverbOut), 44100 * sizeof(short)); 
+    // for (int i = 0; i < 44100; i++){
+    //     auto output = delayLine.feedArr(out[i]); 
+    //     if (output.size() != 0){
+    //         for (auto val : output){
+    //             short foo = (short) val; 
+    //             outfile.write(reinterpret_cast<const char*> (&foo), sizeof(foo)); 
+    //         }
+    //     } 
+    // }
+
     outfile.close();
 
 

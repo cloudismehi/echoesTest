@@ -6,6 +6,7 @@
 class ProjectInfo{
     public: 
     int sampleRate = 44100; // in kHz
+    int fftSize = 256; 
     // {number of azimuth samples per z-plane, number of interior z-planes}
     Vector2 numberOfRays = {4, 4};
     // (+ 2) to account for the rays going straight up and straight down
