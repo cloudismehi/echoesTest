@@ -21,6 +21,23 @@ DelayUnit::DelayUnit(int length, float* att){
     if (!fftPlanBackward || !fftPlanForward){
         throw std::runtime_error("failed to create FFTW plan"); 
     }
+
+    float beta = (float)fftSize / projectInfo.sampleRate; 
+    // writing the coefficients k for the filtering (just to make sure it gets applied to both sides)
+    // first five indeces are beta * freq
+    attenuationIndeces[0] = beta * 125;     
+    attenuationIndeces[1] = beta * 250;     
+    attenuationIndeces[2] = beta * 500;     
+    attenuationIndeces[3] = beta * 1000;     
+    attenuationIndeces[4] = beta * 2000;     
+    // middle index is the nyquist index 
+    attenuationIndeces[5] = projectInfo.fftSize / 2; 
+    // the mirrored ones are the fft size minus the first five indices reversed
+    attenuationIndeces[6] = projectInfo.fftSize - attenuationIndeces[4]; 
+    attenuationIndeces[7] = projectInfo.fftSize - attenuationIndeces[3]; 
+    attenuationIndeces[8] = projectInfo.fftSize - attenuationIndeces[2]; 
+    attenuationIndeces[9] = projectInfo.fftSize - attenuationIndeces[1]; 
+    attenuationIndeces[10] = projectInfo.fftSize - attenuationIndeces[0]; 
 }
 
 void DelayUnit::changeDelayTime(double newLength){ 
@@ -58,36 +75,41 @@ std::vector<float> DelayUnit::feedArr(float input){
         }
         // execute fft -> fftOutput
         fftw_execute(fftPlanForward.get()); 
-        //? filtering on fftOutput
-        for (int i = 0; i < fftSize; i++){
-            float freq = (i * projectInfo.sampleRate) / fftSize; 
 
-            if (freq < 125){
+        //? filtering on fftOutput
+        for (int k = 0; k < fftSize; k++){
+            // for all these checks i am checking both the index k and its mirror reflection about fftSize/2
+            if ((k <= attenuationIndeces[0]) || k >= attenuationIndeces[10]){
                 // first band
-                fftOutput[i][0] *= attenuation[0]; 
-                fftOutput[i][1] *= attenuation[0]; 
-            } else if (freq < 250){
-                // second band
-                fftOutput[i][0] *= attenuation[1]; 
-                fftOutput[i][1] *= attenuation[1]; 
-            } else if (freq < 500){
-                // third band
-                fftOutput[i][0] *= attenuation[2]; 
-                fftOutput[i][1] *= attenuation[2]; 
-            } else if (freq < 1000){
-                // fourth band
-                fftOutput[i][0] *= attenuation[3]; 
-                fftOutput[i][1] *= attenuation[3]; 
-            } else if (freq < 2000){
-                // fifth band
-                fftOutput[i][0] *= attenuation[4]; 
-                fftOutput[i][1] *= attenuation[4]; 
-            } else {
-                // sixth band
-                fftOutput[i][0] *= attenuation[5]; 
-                fftOutput[i][1] *= attenuation[5]; 
+                fftOutput[k][0] *= attenuation[0]; 
+                fftOutput[k][1] *= attenuation[0]; 
             }
-        }
+            else if ((k <= attenuationIndeces[1]) || k >= attenuationIndeces[9]){
+                // second band
+                fftOutput[k][0] *= attenuation[1]; 
+                fftOutput[k][1] *= attenuation[1];
+            }
+            else if ((k <= attenuationIndeces[2]) || k >= attenuationIndeces[8]){
+                // third band
+                fftOutput[k][0] *= attenuation[2]; 
+                fftOutput[k][1] *= attenuation[2];
+            }
+            else if ((k <= attenuationIndeces[3]) || k >= attenuationIndeces[7]){
+                // fourth band
+                fftOutput[k][0] *= attenuation[3]; 
+                fftOutput[k][1] *= attenuation[3];
+            }
+            else if ((k <= attenuationIndeces[4]) || k >= attenuationIndeces[6]){
+                // fifth band
+                fftOutput[k][0] *= attenuation[4]; 
+                fftOutput[k][1] *= attenuation[4];
+            } else{
+                // sixth band
+                fftOutput[k][0] *= attenuation[5]; 
+                fftOutput[k][1] *= attenuation[5];
+            }
+        } // loop through fft output
+
         // execute ifft -> fftInput
         fftw_execute(fftPlanBackward.get()); 
         // copy output into fftCache to return

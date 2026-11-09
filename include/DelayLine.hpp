@@ -63,6 +63,7 @@ class DelayUnit{
     
     // attenuation factor for this delay unit
     float attenuation[6]; 
+    int attenuationIndeces[11]; 
     
 
     public: 
