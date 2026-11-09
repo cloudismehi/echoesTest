@@ -15,31 +15,33 @@ int main(){
     ProjectInfo projectInfo; 
     Room room; 
     Particle particle(room); 
-    SineWave sineWave; 
-
+    WhiteNoise whiteNoise; 
     short out[44100]; 
     
-    sineWave.generateSineChirp(200, 0.2, 1, 0.5, out); 
+    whiteNoise.generateNoiseBurst(0.2, 1, 0.5, out); 
 
     auto reverberationParams = particle.calculateRadialRayPaths(projectInfo.numberOfRays, 5); 
     
     DelayLine delayLine(projectInfo.totalNumberOfDelays, reverberationParams); 
     delayLine.printDelayInfo(); 
 
-    // std::fstream outfile("assets/reverbRawSine.raw", std::ios::out | std::ios::binary); 
-    // short reverbOut[44100]; 
-    // for (int i = 0; i < 44100; i++){
-    //     reverbOut[i] = (short) (delayLine.feed((double) out[i]) * projectInfo.wetRev) + out[i]; 
-    // }
+    std::fstream outfile("assets/reverbRawSine.raw", std::ios::out | std::ios::binary);  
 
-    // outfile.write(reinterpret_cast<const char*> (reverbOut), 44100 * sizeof(short)); 
-    // outfile.close();
+    for (int i = 0; i < 44100; i++){
+        auto output = delayLine.feedArr(out[i]); 
+        if (output.size() != 0){
+            for (auto val : output){
+                short foo = (short) val; 
+                outfile.write(reinterpret_cast<const char*> (&foo), sizeof(foo)); 
+            }
+        } 
+    }
 
-    // delayLine.printDelayInfo(); 
+    outfile.close();
 
-    //! ONLY FOR DEBUGGING: turn raw file into wav file using ffmpeg, only works on my machine with my current 
-    //! project architecture
-    // system("ffmpeg -f s16le -ar 44100 -ac 1 -i assets/reverbRawSine.raw assets/reverbSine.wav"); 
+    // //! ONLY FOR DEBUGGING: turn raw file into wav file using ffmpeg, only works on my machine with my current 
+    // //! project architecture
+    system("ffmpeg -f s16le -ar 44100 -ac 1 -i assets/reverbRawSine.raw assets/reverbSine.wav"); 
 
     return 0; 
 }
