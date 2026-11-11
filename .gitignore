@@ -1,2 +1,5 @@
 *.o 
 execs/echoesTest
+assets/cheersRev.raw
+assets/cheersRev.wav
+assets/benchmark.csv
